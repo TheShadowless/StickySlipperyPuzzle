@@ -15,26 +15,28 @@ public class PlayerController : MonoBehaviour
     [Header("Next Scene")]
     public string nextSceneName;
 
-    //Components
+    // Components
     private Rigidbody2D rb;
     private Animator anim;
 
-    //States
+    // States
     private bool grounded;
     private bool isInB2 = false;
 
-    //Default values
+    // Default values
     private float defaultMoveSpeed;
     private float defaultJumpForce;
 
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
-        anim = GetComponent<Animator>(); 
+        anim = GetComponent<Animator>();
     }
 
     void Start()
     {
+        AnalyticsManager.Instance.OnLevelStart();
+
         defaultMoveSpeed = moveSpeed;
         defaultJumpForce = jumpForce;
     }
@@ -47,19 +49,15 @@ public class PlayerController : MonoBehaviour
         HandleSkillInput();
     }
 
-    //Movement (Mapping)
     void HandleMovement()
     {
-        float move = Input.GetAxisRaw("Horizontal"); //mapping
-
+        float move = Input.GetAxisRaw("Horizontal");
         rb.velocity = new Vector2(move * moveSpeed, rb.velocity.y);
 
-        
         if (move != 0)
             transform.localScale = new Vector3(Mathf.Sign(move), 1, 1);
     }
 
-    //Jump
     void HandleJump()
     {
         grounded = Physics2D.OverlapCircle(
@@ -74,13 +72,11 @@ public class PlayerController : MonoBehaviour
             {
                 rb.velocity = new Vector2(rb.velocity.x, 0);
                 rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
-
-                anim.SetTrigger("Jump"); // 🎬 jump animation
+                anim.SetTrigger("Jump");
             }
         }
     }
 
-    //Animation
     void UpdateAnimation()
     {
         anim.SetFloat("Speed", Mathf.Abs(rb.velocity.x));
@@ -88,7 +84,6 @@ public class PlayerController : MonoBehaviour
         anim.SetFloat("yVelocity", rb.velocity.y);
     }
 
-    //Skill / Action
     void HandleSkillInput()
     {
         if (Input.GetKeyDown(KeyCode.Z)) ShootGel("Sticky");
@@ -97,10 +92,10 @@ public class PlayerController : MonoBehaviour
 
     void ShootGel(string type)
     {
+        AnalyticsManager.Instance.OnBulletUsed(type);
         Debug.Log("Shoot " + type);
     }
 
-    //Trigger System
     void OnTriggerEnter2D(Collider2D other)
     {
         if (other.CompareTag("B1"))
@@ -116,10 +111,13 @@ public class PlayerController : MonoBehaviour
         }
         else if (other.CompareTag("D"))
         {
+            AnalyticsManager.Instance.OnPlayerDeath();
             SceneManager.LoadScene(SceneManager.GetActiveScene().name);
         }
         else if (other.CompareTag("GO"))
         {
+            AnalyticsManager.Instance.OnLevelComplete();
+
             if (!string.IsNullOrEmpty(nextSceneName))
                 SceneManager.LoadScene(nextSceneName);
         }

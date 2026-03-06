@@ -2,22 +2,20 @@ using UnityEngine;
 
 public class Shoot : MonoBehaviour
 {
-    [SerializeField] Transform shootPoint;           // จุดยิง
-    [SerializeField] Rigidbody2D[] bulletPrefabs;    // กระสุนหลายแบบ (ลากใส่ใน Inspector)
-    [SerializeField] float bulletSpeed = 10f;        // ความเร็วกระสุน
-    [SerializeField] AudioSource shootSound;         // เสียงยิง
+    [SerializeField] Transform shootPoint;
+    [SerializeField] Rigidbody2D[] bulletPrefabs;
+    [SerializeField] float bulletSpeed = 10f;
+    [SerializeField] AudioSource shootSound;
 
-    private int currentBulletIndex = 0;              // เก็บว่าใช้อยู่แบบไหน
+    private int currentBulletIndex = 0;
 
     void Update()
     {
-        // ยิงเมื่อกด O
         if (Input.GetKeyDown(KeyCode.O))
         {
             ShootBullet();
         }
 
-        // สลับกระสุนเมื่อกด I
         if (Input.GetKeyDown(KeyCode.I))
         {
             SwitchBullet();
@@ -26,32 +24,37 @@ public class Shoot : MonoBehaviour
 
     void ShootBullet()
     {
-        // ตรวจว่ามีกระสุนให้เลือกไหม
         if (bulletPrefabs.Length == 0) return;
 
-        // สร้างกระสุนตามชนิดที่เลือก
-        Rigidbody2D bullet = Instantiate(bulletPrefabs[currentBulletIndex], shootPoint.position, shootPoint.rotation);
+        Rigidbody2D bullet = Instantiate(
+            bulletPrefabs[currentBulletIndex],
+            shootPoint.position,
+            shootPoint.rotation
+        );
 
-        // ใส่ความเร็วให้กระสุน
         bullet.velocity = shootPoint.right * bulletSpeed;
 
-        // เล่นเสียง
         if (shootSound != null)
-        {
             shootSound.Play();
-        }
 
-        // ลบกระสุนหลัง 5 วิ
+        // กำหนดชื่อ bullet สำหรับ analytics
+        string bulletName = "yellowbullet";
+
+        if (currentBulletIndex == 1)
+            bulletName = "redbullet";
+
+        // ส่ง event ไป analytics
+        AnalyticsManager.Instance.OnBulletUsed(bulletName);
+
         Destroy(bullet.gameObject, 15f);
     }
 
     void SwitchBullet()
     {
         currentBulletIndex++;
+
         if (currentBulletIndex >= bulletPrefabs.Length)
-        {
-            currentBulletIndex = 0; // วนกลับไปแบบแรก
-        }
+            currentBulletIndex = 0;
 
         Debug.Log("Switched to bullet type: " + currentBulletIndex);
     }
