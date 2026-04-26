@@ -42,7 +42,7 @@ public class Shoot : MonoBehaviour
             shootPoint.rotation
         );
 
-        bullet.velocity = shootPoint.right * bulletSpeed;
+        bullet.linearVelocity = shootPoint.right * bulletSpeed;
 
         if (shootSound != null)
             shootSound.Play();

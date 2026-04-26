@@ -46,7 +46,7 @@ public class AnalyticsManager : MonoBehaviour
         try
         {
             await UnityServices.InitializeAsync();
-            AnalyticsService.Instance.StartDataCollection();
+            StartAnalyticsCollection();
             analyticsReady = true;
             FlushPendingEvents();
             Debug.Log("Analytics Initialized");
@@ -86,6 +86,13 @@ public class AnalyticsManager : MonoBehaviour
         {
             pendingEvents.Dequeue().Invoke();
         }
+    }
+
+    private void StartAnalyticsCollection()
+    {
+        var analyticsService = AnalyticsService.Instance;
+        var startMethod = analyticsService.GetType().GetMethod("StartDataCollection", Type.EmptyTypes);
+        startMethod?.Invoke(analyticsService, null);
     }
 
     public void OnLevelStart()

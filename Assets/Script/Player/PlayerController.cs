@@ -62,7 +62,7 @@ public class PlayerController : MonoBehaviour
     void HandleMovement()
     {
         float move = Input.GetAxisRaw("Horizontal");
-        rb.velocity = new Vector2(move * moveSpeed, rb.velocity.y);
+        rb.linearVelocity = new Vector2(move * moveSpeed, rb.linearVelocity.y);
 
         if (move != 0)
             transform.localScale = new Vector3(Mathf.Sign(move), 1, 1);
@@ -80,7 +80,7 @@ public class PlayerController : MonoBehaviour
         {
             if (grounded || isInB2)
             {
-                rb.velocity = new Vector2(rb.velocity.x, 0);
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
                 rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
                 anim.SetTrigger("Jump");
             }
@@ -89,9 +89,9 @@ public class PlayerController : MonoBehaviour
 
     void UpdateAnimation()
     {
-        anim.SetFloat("Speed", Mathf.Abs(rb.velocity.x));
+        anim.SetFloat("Speed", Mathf.Abs(rb.linearVelocity.x));
         anim.SetBool("isGrounded", grounded);
-        anim.SetFloat("yVelocity", rb.velocity.y);
+        anim.SetFloat("yVelocity", rb.linearVelocity.y);
     }
 
     void HandleSkillInput()
@@ -147,7 +147,7 @@ public class PlayerController : MonoBehaviour
 
         if (!enabled)
         {
-            rb.velocity = Vector2.zero;
+            rb.linearVelocity = Vector2.zero;
             rb.simulated = false;
             if (playerCollider != null)
                 playerCollider.enabled = false;
@@ -165,7 +165,7 @@ public class PlayerController : MonoBehaviour
         jumpForce = defaultJumpForce;
         isInB2 = false;
         transform.position = position;
-        rb.velocity = Vector2.zero;
+        rb.linearVelocity = Vector2.zero;
         SetGameplayEnabled(true);
     }
 }

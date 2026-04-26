@@ -19,7 +19,7 @@ public class Bullet : MonoBehaviour
             Debug.Log("Bullet triggered with Tilemap at: " + hitPoint);
 
             // หยุดการเคลื่อนที่ของกระสุน
-            rb.velocity = Vector2.zero;
+            rb.linearVelocity = Vector2.zero;
             rb.angularVelocity = 0f;
 
             // ทำให้กระสุนหยุดอยู่กับที่
