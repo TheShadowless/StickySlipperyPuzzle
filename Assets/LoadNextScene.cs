@@ -14,7 +14,7 @@ public class LoadNextScene : MonoBehaviour
         {
             nextSceneButton.onClick.AddListener(LoadScene);
         }
-        AnalyticsManager.Instance.OnLevelStart();
+        AnalyticsManager.Instance?.OnLevelStart();
     }
 
     void LoadScene()

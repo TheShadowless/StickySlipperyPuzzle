@@ -174,7 +174,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   nextSceneButton: {fileID: 106780739}
-  sceneName: Scenesgame
+  sceneName: LevelSelect
 --- !u!114 &106780739
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -1,34 +1,60 @@
-﻿using UnityEngine;
-using UnityEngine.SceneManagement;
-using Unity.Services.Core;
+using System;
+using System.Collections.Generic;
 using Unity.Services.Analytics;
+using Unity.Services.Core;
+using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class AnalyticsManager : MonoBehaviour
 {
     public static AnalyticsManager Instance;
+
+    private static bool isBootstrapped;
 
     private float sessionStartTime;
     private int deathCount = 0;
     private int winCount = 0;
     private int bulletUsed = 0;
     private int bulletSwitchCount = 0;
+    private bool analyticsReady = false;
+    private readonly Queue<Action> pendingEvents = new Queue<Action>();
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    private static void Bootstrap()
+    {
+        if (isBootstrapped || Instance != null)
+            return;
+
+        GameObject analyticsObject = new GameObject("AnalyticsManager");
+        analyticsObject.AddComponent<AnalyticsManager>();
+        isBootstrapped = true;
+    }
 
     private async void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-
-            await UnityServices.InitializeAsync();
-            AnalyticsService.Instance.StartDataCollection();
-
-            sessionStartTime = Time.time;
-            Debug.Log("Analytics Initialized");
-        }
-        else
+        if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
+            return;
+        }
+
+        Instance = this;
+        isBootstrapped = true;
+        DontDestroyOnLoad(gameObject);
+        sessionStartTime = Time.time;
+
+        try
+        {
+            await UnityServices.InitializeAsync();
+            AnalyticsService.Instance.StartDataCollection();
+            analyticsReady = true;
+            FlushPendingEvents();
+            Debug.Log("Analytics Initialized");
+        }
+        catch (Exception ex)
+        {
+            analyticsReady = false;
+            Debug.LogWarning($"Analytics initialization failed: {ex.Message}");
         }
     }
 
@@ -37,24 +63,42 @@ public class AnalyticsManager : MonoBehaviour
         return Time.time - sessionStartTime;
     }
 
-    // -------------------------
-    // LEVEL START
-    // -------------------------
+    private void RecordEvent(CustomEvent evt)
+    {
+        void Record()
+        {
+            AnalyticsService.Instance.RecordEvent(evt);
+            AnalyticsService.Instance.Flush();
+        }
+
+        if (analyticsReady)
+        {
+            Record();
+            return;
+        }
+
+        pendingEvents.Enqueue(Record);
+    }
+
+    private void FlushPendingEvents()
+    {
+        while (pendingEvents.Count > 0)
+        {
+            pendingEvents.Dequeue().Invoke();
+        }
+    }
+
     public void OnLevelStart()
     {
         CustomEvent evt = new CustomEvent("level_start");
         evt.Add("scene_name", SceneManager.GetActiveScene().name);
         evt.Add("session_time", GetSessionTime());
 
-        AnalyticsService.Instance.RecordEvent(evt);
-        AnalyticsService.Instance.Flush();
+        RecordEvent(evt);
 
         Debug.Log("Level Start: " + SceneManager.GetActiveScene().name);
     }
 
-    // -------------------------
-    // PLAYER DEATH / FAIL
-    // -------------------------
     public void OnPlayerDeath()
     {
         deathCount++;
@@ -65,21 +109,16 @@ public class AnalyticsManager : MonoBehaviour
         evt.Add("session_time", GetSessionTime());
         evt.Add("scene_name", SceneManager.GetActiveScene().name);
 
-        AnalyticsService.Instance.RecordEvent(evt);
-        AnalyticsService.Instance.Flush();
+        RecordEvent(evt);
 
         Debug.Log($"Player Death | deathCount={deathCount}");
     }
 
-    // เผื่อโค้ดเก่ายังเรียกชื่อนี้
     public void OnLevelFail()
     {
         OnPlayerDeath();
     }
 
-    // -------------------------
-    // LEVEL COMPLETE
-    // -------------------------
     public void OnLevelComplete()
     {
         winCount++;
@@ -91,16 +130,11 @@ public class AnalyticsManager : MonoBehaviour
         evt.Add("session_time", GetSessionTime());
         evt.Add("scene_name", SceneManager.GetActiveScene().name);
 
-        AnalyticsService.Instance.RecordEvent(evt);
-        AnalyticsService.Instance.Flush();
+        RecordEvent(evt);
 
         Debug.Log($"Level Complete | winCount={winCount}");
     }
 
-    // -------------------------
-    // BULLET USED
-    // -------------------------
-    // แบบละเอียด สำหรับสคริปต์ยิง
     public void OnBulletUsed(int bulletIndex, string bulletName, float speed)
     {
         bulletUsed++;
@@ -113,13 +147,11 @@ public class AnalyticsManager : MonoBehaviour
         evt.Add("scene_name", SceneManager.GetActiveScene().name);
         evt.Add("session_time", GetSessionTime());
 
-        AnalyticsService.Instance.RecordEvent(evt);
-        AnalyticsService.Instance.Flush();
+        RecordEvent(evt);
 
         Debug.Log($"Bullet Used: {bulletName} | total={bulletUsed}");
     }
 
-    // แบบง่าย เผื่อ PlayerController ยังส่งมาแค่ type เดียว
     public void OnBulletUsed(string bulletName)
     {
         bulletUsed++;
@@ -132,15 +164,11 @@ public class AnalyticsManager : MonoBehaviour
         evt.Add("scene_name", SceneManager.GetActiveScene().name);
         evt.Add("session_time", GetSessionTime());
 
-        AnalyticsService.Instance.RecordEvent(evt);
-        AnalyticsService.Instance.Flush();
+        RecordEvent(evt);
 
         Debug.Log($"Bullet Used: {bulletName} | total={bulletUsed}");
     }
 
-    // -------------------------
-    // BULLET SWITCH
-    // -------------------------
     public void OnBulletSwitch(int bulletIndex, string bulletName)
     {
         bulletSwitchCount++;
@@ -152,15 +180,11 @@ public class AnalyticsManager : MonoBehaviour
         evt.Add("scene_name", SceneManager.GetActiveScene().name);
         evt.Add("session_time", GetSessionTime());
 
-        AnalyticsService.Instance.RecordEvent(evt);
-        AnalyticsService.Instance.Flush();
+        RecordEvent(evt);
 
         Debug.Log($"Bullet Switched: {bulletName} | switchCount={bulletSwitchCount}");
     }
 
-    // -------------------------
-    // SHOOT BLOCKED
-    // -------------------------
     public void OnShootBlocked(string reason)
     {
         CustomEvent evt = new CustomEvent("shoot_blocked");
@@ -168,8 +192,7 @@ public class AnalyticsManager : MonoBehaviour
         evt.Add("scene_name", SceneManager.GetActiveScene().name);
         evt.Add("session_time", GetSessionTime());
 
-        AnalyticsService.Instance.RecordEvent(evt);
-        AnalyticsService.Instance.Flush();
+        RecordEvent(evt);
 
         Debug.Log($"Shoot Blocked: {reason}");
     }

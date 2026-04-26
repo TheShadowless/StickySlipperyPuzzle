@@ -13,7 +13,7 @@ public class Shoot : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.O))
         {
-            ShootBullet();
+            ShootCurrentBullet();
         }
 
         if (Input.GetKeyDown(KeyCode.I))
@@ -22,9 +22,19 @@ public class Shoot : MonoBehaviour
         }
     }
 
-    void ShootBullet()
+    public void ShootCurrentBullet()
     {
-        if (bulletPrefabs.Length == 0) return;
+        if (bulletPrefabs == null || bulletPrefabs.Length == 0)
+        {
+            AnalyticsManager.Instance?.OnShootBlocked("no_bullet_prefab");
+            return;
+        }
+
+        if (shootPoint == null)
+        {
+            AnalyticsManager.Instance?.OnShootBlocked("missing_shoot_point");
+            return;
+        }
 
         Rigidbody2D bullet = Instantiate(
             bulletPrefabs[currentBulletIndex],
@@ -37,25 +47,50 @@ public class Shoot : MonoBehaviour
         if (shootSound != null)
             shootSound.Play();
 
-        // กำหนดชื่อ bullet สำหรับ analytics
-        string bulletName = "yellowbullet";
-
-        if (currentBulletIndex == 1)
-            bulletName = "redbullet";
-
-        // ส่ง event ไป analytics
-        AnalyticsManager.Instance.OnBulletUsed(bulletName);
+        string bulletName = GetBulletName(currentBulletIndex);
+        AnalyticsManager.Instance?.OnBulletUsed(currentBulletIndex, bulletName, bulletSpeed);
 
         Destroy(bullet.gameObject, 15f);
     }
 
-    void SwitchBullet()
+    public void SwitchBullet()
     {
+        if (bulletPrefabs == null || bulletPrefabs.Length == 0)
+        {
+            AnalyticsManager.Instance?.OnShootBlocked("no_bullet_prefab");
+            return;
+        }
+
         currentBulletIndex++;
 
         if (currentBulletIndex >= bulletPrefabs.Length)
             currentBulletIndex = 0;
 
+        AnalyticsManager.Instance?.OnBulletSwitch(currentBulletIndex, GetBulletName(currentBulletIndex));
         Debug.Log("Switched to bullet type: " + currentBulletIndex);
+    }
+
+    public void SelectBullet(int bulletIndex, bool fireImmediately)
+    {
+        if (bulletPrefabs == null || bulletPrefabs.Length == 0)
+        {
+            AnalyticsManager.Instance?.OnShootBlocked("no_bullet_prefab");
+            return;
+        }
+
+        int clampedIndex = Mathf.Clamp(bulletIndex, 0, bulletPrefabs.Length - 1);
+        bool changedBullet = currentBulletIndex != clampedIndex;
+        currentBulletIndex = clampedIndex;
+
+        if (changedBullet)
+            AnalyticsManager.Instance?.OnBulletSwitch(currentBulletIndex, GetBulletName(currentBulletIndex));
+
+        if (fireImmediately)
+            ShootCurrentBullet();
+    }
+
+    private string GetBulletName(int bulletIndex)
+    {
+        return bulletIndex == 1 ? "redbullet" : "yellowbullet";
     }
 }

@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class PlayerController : MonoBehaviour
@@ -15,27 +15,34 @@ public class PlayerController : MonoBehaviour
     [Header("Next Scene")]
     public string nextSceneName;
 
-    // Components
     private Rigidbody2D rb;
     private Animator anim;
+    private Shoot shootController;
+    private Collider2D playerCollider;
 
-    // States
     private bool grounded;
     private bool isInB2 = false;
 
-    // Default values
     private float defaultMoveSpeed;
     private float defaultJumpForce;
+    private Vector3 startPosition;
+    private bool gameplayEnabled = true;
+
+    public bool IsGrounded => grounded;
+    public Vector3 StartPosition => startPosition;
 
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
-        anim = GetComponent<Animator>();
+        anim = GetComponentInChildren<Animator>();
+        shootController = GetComponent<Shoot>();
+        playerCollider = GetComponent<Collider2D>();
+        startPosition = transform.position;
     }
 
     void Start()
     {
-        AnalyticsManager.Instance.OnLevelStart();
+        AnalyticsManager.Instance?.OnLevelStart();
 
         defaultMoveSpeed = moveSpeed;
         defaultJumpForce = jumpForce;
@@ -43,6 +50,9 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
+        if (!gameplayEnabled)
+            return;
+
         HandleMovement();
         HandleJump();
         UpdateAnimation();
@@ -86,14 +96,14 @@ public class PlayerController : MonoBehaviour
 
     void HandleSkillInput()
     {
-        if (Input.GetKeyDown(KeyCode.Z)) ShootGel("Sticky");
-        if (Input.GetKeyDown(KeyCode.X)) ShootGel("Slippery");
-    }
+        if (shootController == null)
+            return;
 
-    void ShootGel(string type)
-    {
-        AnalyticsManager.Instance.OnBulletUsed(type);
-        Debug.Log("Shoot " + type);
+        if (Input.GetKeyDown(KeyCode.Z))
+            shootController.SelectBullet(0, true);
+
+        if (Input.GetKeyDown(KeyCode.X))
+            shootController.SelectBullet(1, true);
     }
 
     void OnTriggerEnter2D(Collider2D other)
@@ -111,15 +121,11 @@ public class PlayerController : MonoBehaviour
         }
         else if (other.CompareTag("D"))
         {
-            AnalyticsManager.Instance.OnPlayerDeath();
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            GameSessionManager.Instance?.HandlePlayerDeath(this);
         }
         else if (other.CompareTag("GO"))
         {
-            AnalyticsManager.Instance.OnLevelComplete();
-
-            if (!string.IsNullOrEmpty(nextSceneName))
-                SceneManager.LoadScene(nextSceneName);
+            GameSessionManager.Instance?.HandleLevelComplete(this);
         }
     }
 
@@ -133,5 +139,33 @@ public class PlayerController : MonoBehaviour
 
         if (other.CompareTag("B2"))
             isInB2 = false;
+    }
+
+    public void SetGameplayEnabled(bool enabled)
+    {
+        gameplayEnabled = enabled;
+
+        if (!enabled)
+        {
+            rb.velocity = Vector2.zero;
+            rb.simulated = false;
+            if (playerCollider != null)
+                playerCollider.enabled = false;
+            return;
+        }
+
+        rb.simulated = true;
+        if (playerCollider != null)
+            playerCollider.enabled = true;
+    }
+
+    public void Respawn(Vector3 position)
+    {
+        moveSpeed = defaultMoveSpeed;
+        jumpForce = defaultJumpForce;
+        isInB2 = false;
+        transform.position = position;
+        rb.velocity = Vector2.zero;
+        SetGameplayEnabled(true);
     }
 }
