@@ -46,41 +46,6 @@ public static class GameProgress
         };
     }
 
-    public static void SaveCheckpoint(string sceneName, Vector3 position)
-    {
-        PlayerPrefs.SetFloat(GetCheckpointKey(sceneName, "x"), position.x);
-        PlayerPrefs.SetFloat(GetCheckpointKey(sceneName, "y"), position.y);
-        PlayerPrefs.SetFloat(GetCheckpointKey(sceneName, "z"), position.z);
-        PlayerPrefs.SetInt(GetCheckpointKey(sceneName, "has"), 1);
-        PlayerPrefs.Save();
-    }
-
-    public static bool TryGetCheckpoint(string sceneName, out Vector3 position)
-    {
-        if (PlayerPrefs.GetInt(GetCheckpointKey(sceneName, "has"), 0) != 1)
-        {
-            position = Vector3.zero;
-            return false;
-        }
-
-        position = new Vector3(
-            PlayerPrefs.GetFloat(GetCheckpointKey(sceneName, "x"), 0f),
-            PlayerPrefs.GetFloat(GetCheckpointKey(sceneName, "y"), 0f),
-            PlayerPrefs.GetFloat(GetCheckpointKey(sceneName, "z"), 0f)
-        );
-
-        return true;
-    }
-
-    public static void ClearCheckpoint(string sceneName)
-    {
-        PlayerPrefs.DeleteKey(GetCheckpointKey(sceneName, "x"));
-        PlayerPrefs.DeleteKey(GetCheckpointKey(sceneName, "y"));
-        PlayerPrefs.DeleteKey(GetCheckpointKey(sceneName, "z"));
-        PlayerPrefs.DeleteKey(GetCheckpointKey(sceneName, "has"));
-        PlayerPrefs.Save();
-    }
-
     public static float GetMusicVolume()
     {
         return PlayerPrefs.GetFloat(MusicVolumeKey, 0.75f);
@@ -112,10 +77,5 @@ public static class GameProgress
             "Level_3" => 3,
             _ => -1
         };
-    }
-
-    private static string GetCheckpointKey(string sceneName, string suffix)
-    {
-        return $"checkpoint.{sceneName}.{suffix}";
     }
 }

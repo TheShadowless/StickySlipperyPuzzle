@@ -1,6 +1,4 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
-
 public class PlayerController : MonoBehaviour
 {
     [Header("Movement")]
@@ -25,11 +23,9 @@ public class PlayerController : MonoBehaviour
 
     private float defaultMoveSpeed;
     private float defaultJumpForce;
-    private Vector3 startPosition;
     private bool gameplayEnabled = true;
 
     public bool IsGrounded => grounded;
-    public Vector3 StartPosition => startPosition;
 
     void Awake()
     {
@@ -37,7 +33,6 @@ public class PlayerController : MonoBehaviour
         anim = GetComponentInChildren<Animator>();
         shootController = GetComponent<Shoot>();
         playerCollider = GetComponent<Collider2D>();
-        startPosition = transform.position;
     }
 
     void Start()
@@ -157,15 +152,5 @@ public class PlayerController : MonoBehaviour
         rb.simulated = true;
         if (playerCollider != null)
             playerCollider.enabled = true;
-    }
-
-    public void Respawn(Vector3 position)
-    {
-        moveSpeed = defaultMoveSpeed;
-        jumpForce = defaultJumpForce;
-        isInB2 = false;
-        transform.position = position;
-        rb.linearVelocity = Vector2.zero;
-        SetGameplayEnabled(true);
     }
 }

@@ -13,11 +13,8 @@ public class GameSessionManager : MonoBehaviour
 
     private PlayerController currentPlayer;
     private string currentSceneName;
-    private Vector3 lastSafePosition;
-    private bool hasSafePosition;
     private bool isRespawning;
     private bool isPaused;
-    private float lastCheckpointSaveTime;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void Bootstrap()
@@ -63,24 +60,14 @@ public class GameSessionManager : MonoBehaviour
 
         if (currentPlayer == null || isRespawning || isPaused)
             return;
-
-        if (currentPlayer.IsGrounded && Time.unscaledTime - lastCheckpointSaveTime >= 0.5f)
-        {
-            lastCheckpointSaveTime = Time.unscaledTime;
-            lastSafePosition = currentPlayer.transform.position;
-            hasSafePosition = true;
-            GameProgress.SaveCheckpoint(currentSceneName, lastSafePosition);
-        }
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         currentSceneName = scene.name;
         currentPlayer = null;
-        hasSafePosition = false;
         isRespawning = false;
         isPaused = false;
-        lastCheckpointSaveTime = 0f;
         Time.timeScale = 1f;
 
         DestroyOverlay();
@@ -99,14 +86,13 @@ public class GameSessionManager : MonoBehaviour
 
         currentPlayer = player;
         AnalyticsManager.Instance?.OnPlayerDeath();
-        StartCoroutine(RespawnRoutine());
+        ShowGameOver();
     }
 
     public void HandleLevelComplete(PlayerController player)
     {
         currentPlayer = player;
         GameProgress.UnlockNextLevel(currentSceneName);
-        GameProgress.ClearCheckpoint(currentSceneName);
         AnalyticsManager.Instance?.OnLevelComplete();
         ShowResult("LEVEL COMPLETE", "Sticky and slippery mastered.", true);
     }
@@ -165,42 +151,16 @@ public class GameSessionManager : MonoBehaviour
         if (currentPlayer == null)
             yield break;
 
-        if (GameProgress.TryGetCheckpoint(currentSceneName, out Vector3 savedCheckpoint))
-        {
-            currentPlayer.transform.position = savedCheckpoint;
-            lastSafePosition = savedCheckpoint;
-            hasSafePosition = true;
-        }
-        else
-        {
-            lastSafePosition = currentPlayer.transform.position;
-            hasSafePosition = true;
-            GameProgress.SaveCheckpoint(currentSceneName, lastSafePosition);
-        }
-
         ApplyAudioVolumes();
     }
 
-    private IEnumerator RespawnRoutine()
+    private void ShowGameOver()
     {
         isRespawning = true;
-        ShowResult("GAME OVER", hasSafePosition ? "Respawning from your latest checkpoint..." : "Restarting level...", false);
+        ShowResult("GAME OVER", "Press Retry to restart the level.", false);
 
         if (currentPlayer != null)
             currentPlayer.SetGameplayEnabled(false);
-
-        yield return new WaitForSecondsRealtime(0.75f);
-
-        if (currentPlayer == null)
-        {
-            RetryLevel();
-            yield break;
-        }
-
-        Vector3 respawnPoint = hasSafePosition ? lastSafePosition : currentPlayer.StartPosition;
-        currentPlayer.Respawn(respawnPoint);
-        ShowGameplayHud();
-        isRespawning = false;
     }
 
     private void BuildOverlay()
